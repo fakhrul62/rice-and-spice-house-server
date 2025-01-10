@@ -33,6 +33,7 @@ async function run() {
     //Get the database and collection on which to run the operation
     const menuCollection = client.db("riceDB").collection("menus");
     const reviewCollection = client.db("riceDB").collection("reviews");
+    const cartCollection = client.db("riceDB").collection("carts");
 
     //menus api
     app.get("/menus", async(req, res)=>{
@@ -42,6 +43,18 @@ async function run() {
     //reviews api
     app.get("/reviews", async(req, res)=>{
         const result = await reviewCollection.find().toArray();
+        res.send(result);
+    })
+    //carts api
+    app.get("/carts", async(req, res)=>{
+      const email = req.query.email;
+      const query = {email: email};
+      const result = await cartCollection.find(query).toArray();
+      res.send(result);
+    })
+    app.post("/carts", async(req, res)=>{
+        const cartItem = req.body;
+        const result = await cartCollection.insertOne(cartItem);
         res.send(result);
     })
 
