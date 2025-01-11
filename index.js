@@ -31,41 +31,57 @@ async function run() {
       "Pinged your deployment. You successfully connected to MongoDB!"
     );
     //Get the database and collection on which to run the operation
+    const userCollection = client.db("riceDB").collection("users");
     const menuCollection = client.db("riceDB").collection("menus");
     const reviewCollection = client.db("riceDB").collection("reviews");
     const cartCollection = client.db("riceDB").collection("carts");
 
+    //users api
+    app.post("/users", async (req, res) => {
+      const user = req.body;
+      const query = { email: user.email };
+      const isExist = await userCollection.findOne(query);
+      if(isExist){
+        return res.send({message: "User already exists!", insertedId: null});
+        
+      }
+      const result = await userCollection.insertOne(user);
+      res.send(result);
+    });
+    app.get("/users", async (req, res) => {
+      const result = await userCollection.find().toArray();
+      res.send(result);
+    });
     //menus api
-    app.get("/menus", async(req, res)=>{
-        const result = await menuCollection.find().toArray();
-        res.send(result);
-    })
+    app.get("/menus", async (req, res) => {
+      const result = await menuCollection.find().toArray();
+      res.send(result);
+    });
     //reviews api
-    app.get("/reviews", async(req, res)=>{
-        const result = await reviewCollection.find().toArray();
-        res.send(result);
-    })
+    app.get("/reviews", async (req, res) => {
+      const result = await reviewCollection.find().toArray();
+      res.send(result);
+    });
     //carts api
-    app.get("/carts", async(req, res)=>{
+    app.get("/carts", async (req, res) => {
       const email = req.query.email;
-      const query = {email: email};
+      const query = { email: email };
       const result = await cartCollection.find(query).toArray();
       res.send(result);
-    })
-    app.post("/carts", async(req, res)=>{
-        const cartItem = req.body;
-        const result = await cartCollection.insertOne(cartItem);
-        res.send(result);
-    })
-    app.delete("/carts/:id", async(req, res)=>{
+    });
+    app.post("/carts", async (req, res) => {
+      const cartItem = req.body;
+      const result = await cartCollection.insertOne(cartItem);
+      res.send(result);
+    });
+    app.delete("/carts/:id", async (req, res) => {
       const id = req.params.id;
-      const query = {_id: new ObjectId(id)};
+      const query = { _id: new ObjectId(id) };
       const result = await cartCollection.deleteOne(query);
       res.send(result);
-    })
-
-
-  } finally {}
+    });
+  } finally {
+  }
 }
 run().catch(console.dir);
 
