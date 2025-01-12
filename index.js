@@ -45,7 +45,7 @@ async function run() {
     })
     //verify token middleware
     const verifyToken = (req, res, next)=>{
-      console.log("inside verifyToken", req.headers.authorization);
+      // console.log("inside verifyToken", req.headers.authorization);
       if(!req.headers.authorization){
         return res.status(401).send({message:"Unauthorized Access Brother"});
       }
@@ -57,6 +57,17 @@ async function run() {
         req.decoded = decoded;
         next();
       })
+    };
+    //verify admin after verifying token
+    const verifyAdmin = async(req, res, next)=>{
+      const email = req.decoded.email;
+      const query = {email: email};
+      const user = await userCollection.findOne(query);
+      const isAdmin = user?.role === "admin";
+      if(!isAdmin){
+        return res.status(403).send({message: "Forbidden Request Brother. You're not the Admin."});
+      };
+      next();
     }
     //users api
     app.post("/users", async (req, res) => {
@@ -83,11 +94,11 @@ async function run() {
       res.send({admin});
 
     })
-    app.get("/users",verifyToken, async (req, res) => {
+    app.get("/users",verifyToken, verifyAdmin, async (req, res) => {
       const result = await userCollection.find().toArray();
       res.send(result);
     });
-    app.patch("/users/admin/:id", async(req, res)=>{
+    app.patch("/users/admin/:id",verifyToken, verifyAdmin, async(req, res)=>{
       const id = req.params.id;
       const query = { _id: new ObjectId(id)};
       const updatedDoc = {
@@ -99,7 +110,7 @@ async function run() {
       res.send(result);
 
     })
-    app.delete("/users/:id", async(req, res)=>{
+    app.delete("/users/:id",verifyToken, verifyAdmin,  async(req, res)=>{
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
       const result = await userCollection.deleteOne(query);
@@ -110,6 +121,11 @@ async function run() {
       const result = await menuCollection.find().toArray();
       res.send(result);
     });
+    app.post("/menus", verifyToken, verifyAdmin, async (req, res) => {
+      const item = req.body;
+      const result = await menuCollection.insertOne(item);
+      res.send(result);
+    })
     //reviews api
     app.get("/reviews", async (req, res) => {
       const result = await reviewCollection.find().toArray();
