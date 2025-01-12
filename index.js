@@ -43,7 +43,6 @@ async function run() {
       const isExist = await userCollection.findOne(query);
       if(isExist){
         return res.send({message: "User already exists!", insertedId: null});
-        
       }
       const result = await userCollection.insertOne(user);
       res.send(result);
@@ -52,6 +51,24 @@ async function run() {
       const result = await userCollection.find().toArray();
       res.send(result);
     });
+    app.patch("/users/admin/:id", async(req, res)=>{
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id)};
+      const updatedDoc = {
+        $set: {
+          role: "admin"
+        }
+      };
+      const result = await userCollection.updateOne(query, updatedDoc);
+      res.send(result);
+
+    })
+    app.delete("/users/:id", async(req, res)=>{
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await userCollection.deleteOne(query);
+      res.send(result);
+    })
     //menus api
     app.get("/menus", async (req, res) => {
       const result = await menuCollection.find().toArray();
