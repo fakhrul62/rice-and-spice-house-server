@@ -4,6 +4,9 @@ import jwt from "jsonwebtoken";
 import cookieParser from "cookie-parser";
 import cors from "cors";
 import "dotenv/config";
+import Stripe from 'stripe';
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+
 
 const app = express();
 const port = process.env.PORT || 5000;
@@ -44,6 +47,7 @@ async function run() {
       });
       res.send({ token });
     });
+
     //verify token middleware
     const verifyToken = (req, res, next) => {
       // console.log("inside verifyToken", req.headers.authorization);
@@ -61,6 +65,7 @@ async function run() {
         next();
       });
     };
+
     //verify admin after verifying token
     const verifyAdmin = async (req, res, next) => {
       const email = req.decoded.email;
@@ -76,6 +81,7 @@ async function run() {
       }
       next();
     };
+
     //users api
     app.post("/users", async (req, res) => {
       const user = req.body;
@@ -126,6 +132,7 @@ async function run() {
       const result = await userCollection.deleteOne(query);
       res.send(result);
     });
+
     //menus api
     app.get("/menus", async (req, res) => {
       const result = await menuCollection.find().toArray();
@@ -137,7 +144,6 @@ async function run() {
       const result = await menuCollection.findOne(query);
       res.send(result);
     })
-    
     app.delete("/menus/:id", verifyToken, verifyAdmin, async (req, res) => {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
@@ -172,6 +178,7 @@ async function run() {
       const result = await reviewCollection.find().toArray();
       res.send(result);
     });
+
     //carts api
     app.get("/carts", async (req, res) => {
       const email = req.query.email;
@@ -190,6 +197,21 @@ async function run() {
       const result = await cartCollection.deleteOne(query);
       res.send(result);
     });
+
+    //payment intent
+    app.post("/create-payment-intent", async (req, res)=>{
+      const {price} = req.body;
+      const amount = parseInt(price * 100);
+      
+      const paymentIntent = await stripe.paymentIntents.create({
+        amount: amount,
+        currency: 'usd',
+        payment_method_types: ["card"],
+      })
+      res.send({
+        clientSecret: paymentIntent.client_secret
+      })
+    })
   } finally {
   }
 }
