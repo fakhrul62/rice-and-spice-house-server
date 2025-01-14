@@ -4,9 +4,8 @@ import jwt from "jsonwebtoken";
 import cookieParser from "cookie-parser";
 import cors from "cors";
 import "dotenv/config";
-import Stripe from 'stripe';
+import Stripe from "stripe";
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
-
 
 const app = express();
 const port = process.env.PORT || 5000;
@@ -74,11 +73,9 @@ async function run() {
       const user = await userCollection.findOne(query);
       const isAdmin = user?.role === "admin";
       if (!isAdmin) {
-        return res
-          .status(403)
-          .send({
-            message: "Forbidden Request Brother. You're not the Admin.",
-          });
+        return res.status(403).send({
+          message: "Forbidden Request Brother. You're not the Admin.",
+        });
       }
       next();
     };
@@ -139,41 +136,40 @@ async function run() {
       const result = await menuCollection.find().toArray();
       res.send(result);
     });
-    app.get("/menus/:id", async (req, res)=>{
+    app.get("/menus/:id", async (req, res) => {
       const id = req.params.id;
-      const query = { _id: new ObjectId(id)};
+      const query = { _id: new ObjectId(id) };
       const result = await menuCollection.findOne(query);
       res.send(result);
-    })
+    });
     app.delete("/menus/:id", verifyToken, verifyAdmin, async (req, res) => {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
       const result = await menuCollection.deleteOne(query);
       res.send(result);
     });
-    app.patch("/menus/:id", verifyToken, verifyAdmin, async (req, res)=>{
+    app.patch("/menus/:id", verifyToken, verifyAdmin, async (req, res) => {
       const item = req.body;
       const id = req.params.id;
-      const query = { _id: new ObjectId(id)};
+      const query = { _id: new ObjectId(id) };
       const updatedDoc = {
-        $set:{
+        $set: {
           name: item.name,
           price: item.price,
           catgory: item.catgory,
           image: item.image,
-          recipe: item.recipe
-        }
+          recipe: item.recipe,
+        },
       };
       const result = await menuCollection.updateOne(query, updatedDoc);
       res.send(result);
-
-    })
+    });
     app.post("/menus", verifyToken, verifyAdmin, async (req, res) => {
       const item = req.body;
       const result = await menuCollection.insertOne(item);
       res.send(result);
     });
-  
+
     //reviews api
     app.get("/reviews", async (req, res) => {
       const result = await reviewCollection.find().toArray();
@@ -200,40 +196,72 @@ async function run() {
     });
 
     //payment intent
-    app.post("/create-payment-intent", async (req, res)=>{
-      const {price} = req.body;
+    app.post("/create-payment-intent", async (req, res) => {
+      const { price } = req.body;
       const amount = parseInt(price * 100);
 
       const paymentIntent = await stripe.paymentIntents.create({
         amount: amount,
-        currency: 'usd',
+        currency: "usd",
         payment_method_types: ["card"],
-      })
+      });
       res.send({
-        clientSecret: paymentIntent.client_secret
-      })
-    })
-    app.get("/payment/:email", verifyToken, async(req, res)=>{
+        clientSecret: paymentIntent.client_secret,
+      });
+    });
+    app.get("/payment/:email", verifyToken, async (req, res) => {
       const email = req.params.email;
-      const query = {email: email};
-      if(email !== req.decoded.email){
-        return res.status(403).send({message: "Forbidden Request Brother. Check your own payment history."});
+      const query = { email: email };
+      if (email !== req.decoded.email) {
+        return res
+          .status(403)
+          .send({
+            message:
+              "Forbidden Request Brother. Check your own payment history.",
+          });
       }
       const result = await paymentCollection.find(query).toArray();
-      res.send(result); 
-    })
-    app.post("/payments", async(req, res)=>{
+      res.send(result);
+    });
+    app.post("/payments", async (req, res) => {
       const payment = req.body;
       const paymentResult = await paymentCollection.insertOne(payment);
-      const query = { _id: {
-        $in: payment.cartIds.map((id) => new ObjectId(id))
-      }}
+      const query = {
+        _id: {
+          $in: payment.cartIds.map((id) => new ObjectId(id)),
+        },
+      };
       const deleteResult = await cartCollection.deleteMany(query);
-      res.send({paymentResult, deleteResult});
-    })
+      res.send({ paymentResult, deleteResult });
+    });
 
+    //admin apis
+    app.get("/admin-stats", async (req, res) => {
+      const users = await userCollection.estimatedDocumentCount();
+      const menus = await menuCollection.estimatedDocumentCount();
+      const payments = await paymentCollection.estimatedDocumentCount();
+      const result = await paymentCollection.aggregate([
+        {
+          $addFields: {
+            amount: { $toDouble: "$amount" }, // Convert 'amount' from string to number
+          },
+        },
+        {
+          $group: {
+            _id: null,
+            totalRevenue: { $sum: "$amount" }, // Sum the converted 'amount'
+          },
+        },
+      ]).toArray();
+      const revenue = result.length > 0 ? result[0].totalRevenue: 0;
+      res.send({
+        users,
+        menus,
+        payments,
+        revenue,
+      })
 
-
+    });
 
     //==================================================================
   } finally {
