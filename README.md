@@ -103,6 +103,6 @@ Contributions are welcome! Feel free to fork the repository and submit a pull re
 ---
 
 ### Contact
-For any inquiries or support, please contact: [email@example.com](mailto:email@example.com)
+For any inquiries or support, please contact: [ifakhrul23@gmail.com](mailto:ifakhrul23@gmail.com)
 
 Enjoy exploring Rice & Spice House!
