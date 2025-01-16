@@ -242,26 +242,63 @@ async function run() {
       const payments = await paymentCollection.estimatedDocumentCount();
       const result = await paymentCollection.aggregate([
         {
-          $addFields: {
-            amount: { $toDouble: "$amount" }, // Convert 'amount' from string to number
-          },
-        },
-        {
           $group: {
             _id: null,
-            totalRevenue: { $sum: "$amount" }, // Sum the converted 'amount'
+            totalRevenue: { $sum: "$price" }, // Sum the converted 'amount'
           },
         },
       ]).toArray();
-      const revenue = result.length > 0 ? result[0].totalRevenue: 0;
+      const revenue = result.length > 0 ? result[0].totalRevenue.toFixed(2): 0;
       res.send({
         users,
         menus,
         payments,
         revenue,
       })
-
     });
+
+    //------------------------------------------------------------------
+    //using aggregate pipeline to get the order status
+    app.get("/order-stats",  verifyToken, verifyAdmin, async(req, res)=>{
+      const result = await paymentCollection.aggregate([
+        {
+          $unwind: "$menuItemIds"
+        },
+        {
+          $addFields: {
+            menuItemIds: { $toObjectId: "$menuItemIds" }
+          }
+        },
+        {
+          $lookup: {
+            from: 'menus',
+            localField: 'menuItemIds',
+            foreignField: '_id',
+            as: 'menuItems'
+          }
+        },
+        {
+          $unwind: "$menuItems"
+        },
+        {
+          $group: {
+            _id: "$menuItems.category",
+            totalAmount: { $sum: { $toDouble: "$menuItems.price" } },
+            quantity: { $sum: 1 }
+          }
+        },
+        {
+          $project:{
+            _id : 0,
+            category: "$_id",
+            quantity: "$quantity",
+            totalAmount: "$totalAmount"
+          }
+        }
+      ]).toArray();
+      res.send(result);
+    })
+    //------------------------------------------------------------------
 
     //==================================================================
   } finally {
